@@ -83,7 +83,9 @@ exports.getUserBookings = async (req, res) => {
 
     const userBookings = await db.Booking.findMany({
       where: { userId: parseInt(userId) },
+      include: { Field: true }, // Include the associated Field data
     });
+    
 
     res.json(userBookings);
   } catch (err) {
