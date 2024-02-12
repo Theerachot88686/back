@@ -4,7 +4,17 @@ const db = require('../models/db');
 
 exports.getAllBookings = async (req, res) => {
   try {
-    const bookings = await db.Booking.findMany();
+    const token = req.headers.authorization;
+    const userId = getUserIdFromJWT(token); // Get the user's ID from the JWT token
+    if (!userId) {
+      throw new Error('User ID not found');
+    }
+
+    // Fetch bookings only for the logged-in user
+    const bookings = await db.Booking.findMany({
+      where: { userId: userId }
+    });
+
     res.json(bookings);
   } catch (err) {
     console.error(err);
@@ -59,5 +69,25 @@ exports.deleteBooking = async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Server Error');
+  }
+};
+
+exports.getUserBookings = async (req, res) => {
+  try {
+    const token = req.headers.authorization;
+    const userId = getUserIdFromJWT(token);
+
+    if (!userId) {
+      return res.status(400).json({ message: "Invalid user ID" });
+    }
+
+    const userBookings = await db.Booking.findMany({
+      where: { userId: parseInt(userId) },
+    });
+
+    res.json(userBookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
   }
 };
