@@ -1,7 +1,7 @@
 const bcrypt = require("bcryptjs");
 const jwt = require('jsonwebtoken')
 const db = require("../models/db");
-const { MongoClient } = require('mongodb');
+
 module.exports.register = async (req, res, next) => {
   const { username, password, confirmPassword, email } = req.body;
   try {

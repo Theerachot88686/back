@@ -1,7 +1,6 @@
 // controllers/bookingController.js
 const getUserIdFromJWT = require("../helpers/decodeJWT");
 const db = require("../models/db");
-const { MongoClient } = require('mongodb');
 
 exports.getAllBookings = async (req, res) => {
   try {

@@ -1,5 +1,5 @@
 const db = require('../models/db');
-const { MongoClient } = require('mongodb');
+
 exports.getByUser = async (req, res, next) => {
     try {
         const field = await db.field.findMany(); // ดึงข้อมูล Field ทั้งหมด
@@ -8,3 +8,4 @@ exports.getByUser = async (req, res, next) => {
         next(error);
     }
 };
+

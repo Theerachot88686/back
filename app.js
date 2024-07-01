@@ -11,23 +11,21 @@ const app = express();
 
 const mongoose = require('mongoose');
 
-mongoose.connect(process.env.MONGODB_URI, { useUnifiedTopology: true })
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useCreateIndex: true, useFindAndModify: false })
   .then(() => console.log('Database connected!'))
   .catch(err => console.error('Database connection error:', err));
 
 app.use(cors());
 app.use(express.json());
 
-// service
+// Routes
 app.use('/auth', authRoute);
 app.use('/field', fieldRoute);
 app.use('/booking', bookingRoute);
 
-// notFound
+// Middleware
 app.use(notFound);
-
-// error
 app.use(errorMiddleware);
 
 const port = process.env.PORT || 8000;
-app.listen(port, () => console.log('Server on Port:', port));
+app.listen(port, () => console.log('Server is running on Port:', port));
