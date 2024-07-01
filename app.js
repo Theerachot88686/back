@@ -1,28 +1,33 @@
-require('dotenv').config()
-const express = require('express')
-const cors = require('cors')
-const notFound = require('./middlewares/notFound')
-const errorMiddleware = require('./middlewares/error')
-const authRoute = require('./routes/auth-routes')
-const fieldRoute = require('./routes/field-routes')
-const booking  = require('./routes/booking-touter')
+require('dotenv').config();
+const express = require('express');
+const cors = require('cors');
+const notFound = require('./middlewares/notFound');
+const errorMiddleware = require('./middlewares/error');
+const authRoute = require('./routes/auth-routes');
+const fieldRoute = require('./routes/field-routes');
+const bookingRoute = require('./routes/booking-touter');
 
-const app = express()
+const app = express();
 
-app.use(cors())
-app.use(express.json())
+const mongoose = require('mongoose');
+
+mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+  .then(() => console.log('Database connected!'))
+  .catch(err => console.error('Database connection error:', err));
+
+app.use(cors());
+app.use(express.json());
 
 // service
-app.use('/auth', authRoute)
-
-app.use('/field',fieldRoute)
-app.use('/booking',booking)
+app.use('/auth', authRoute);
+app.use('/field', fieldRoute);
+app.use('/booking', bookingRoute);
 
 // notFound
-app.use( notFound )
+app.use(notFound);
 
 // error
-app.use(errorMiddleware)
+app.use(errorMiddleware);
 
-let port = process.env.PORT || 8000
-app.listen(port, ()=> console.log('Server on Port :', port))
+const port = process.env.PORT || 8000;
+app.listen(port, () => console.log('Server on Port:', port));
