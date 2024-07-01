@@ -5,13 +5,13 @@ const notFound = require('./middlewares/notFound');
 const errorMiddleware = require('./middlewares/error');
 const authRoute = require('./routes/auth-routes');
 const fieldRoute = require('./routes/field-routes');
-const bookingRoute = require('./routes/booking-touter');
+const bookingRoute = require('./routes/booking-routes');
 
 const app = express();
 
 const mongoose = require('mongoose');
 
-mongoose.connect(process.env.MONGODB_URI, { useNewUrlParser: true, useUnifiedTopology: true })
+mongoose.connect(process.env.MONGODB_URI, { useUnifiedTopology: true })
   .then(() => console.log('Database connected!'))
   .catch(err => console.error('Database connection error:', err));
 
