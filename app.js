@@ -5,7 +5,7 @@ const notFound = require('./middlewares/notFound');
 const errorMiddleware = require('./middlewares/error');
 const authRoute = require('./routes/auth-routes');
 const fieldRoute = require('./routes/field-routes');
-const bookingRoute = require('./routes/booking-routes');
+const bookingRoute = require('./routes/booking-touter');
 
 const app = express();
 
