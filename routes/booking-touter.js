@@ -1,5 +1,5 @@
 // routes/routes.js
-const express = require('express');
+const express = require("express");
 const router = express.Router();
 const authenticate = require("../middlewares/authenticate"); // import middleware ที่รับผิดชอบในการเพิ่มข้อมูล user ลงใน req
 const bookingController = require('../controllers/booking-controller');
