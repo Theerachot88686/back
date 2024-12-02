@@ -4,20 +4,23 @@ const db = require("../models/db");
 
 exports.getAllBookings = async (req, res) => {
   try {
-    // ดึงข้อมูลการจองทั้งหมด
+    const token = req.headers.authorization;
+    const userId = getUserIdFromJWT(token); // Get the user's ID from the JWT token
+    if (!userId) {
+      throw new Error("User ID not found");
+    }
+
+    // Fetch bookings only for the logged-in user
     const bookings = await db.Booking.findMany({
-      include: { Field: true }, // รวมข้อมูลสนาม
+      where: { userId: userId },
     });
 
-    // ส่งข้อมูลการจองทั้งหมดกลับไป
     res.json(bookings);
   } catch (err) {
-    console.error(err); // แสดงข้อผิดพลาดใน console
-    res.status(500).send("Server Error"); // ส่งข้อความ error กลับ
+    console.error(err);
+    res.status(500).send("Server Error");
   }
 };
-
-
 
 exports.createBooking = async (req, res, next) => {
   const data = req.body;
