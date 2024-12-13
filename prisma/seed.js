@@ -1,12 +1,12 @@
-const bcrypt = require("bcryptjs");
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-const password = bcrypt.hashSync("");
 const userData = [
-  { username: "andy", password, email: "andy@gmail.com" },
-  { username: "tai", password, email: "tai@gmail.com" },
-  { username: "wtpl", password, email: "wpddd@gmail.com" },
+  { username: "andy", password: "1234", email: "andy@gmail.com" },
+  { username: "tai", password: "1234", email: "tai@gmail.com" },
+  { username: "wtpl", password: "1234", email: "wpddd@gmail.com" },
+  { username: "admin", password: "1234", email: "andy@gmail.com",role: "admin" },
+  { username: "admin2", password: "1234", email: "tai@gmail.com",role: "admin" },
 ];
 
 const run = async () => {
@@ -15,7 +15,6 @@ const run = async () => {
   await prisma.user.createMany({
     data: userData,
   });
-
 
 };
 

@@ -19,9 +19,11 @@ model User {
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
   bookings  Booking[]
+  role      String    @default("user") 
 
   @@map("users")
 }
+
 
 model Field {
   id           Int       @id @default(autoincrement())
@@ -59,6 +61,8 @@ model BookingHistory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
+
+
 
 enum Status {
   PENDING

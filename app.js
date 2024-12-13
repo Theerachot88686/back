@@ -6,6 +6,7 @@ const errorMiddleware = require('./middlewares/error');
 const authRoute = require('./routes/auth-routes');
 const fieldRoute = require('./routes/field-routes');
 const bookingRoute = require('./routes/booking-touter');
+const pullRoute = require('./routes/pull-router')
 
 const app = express();
 
@@ -17,10 +18,10 @@ app.use(express.json());
 app.use('/auth', authRoute);
 app.use('/field', fieldRoute);
 app.use('/booking', bookingRoute);
-
+app.use('/get', pullRoute)
 // Middleware
 app.use(notFound);
 app.use(errorMiddleware);
 
 const port = process.env.PORT || 8000;
-app.listen(port, () => console.log('Server is running on Port:', port));
+app.listen(port, () => console.log(`Server running at http://localhost:${port}`));

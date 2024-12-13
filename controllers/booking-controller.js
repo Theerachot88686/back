@@ -2,17 +2,17 @@
 const getUserIdFromJWT = require("../helpers/decodeJWT");
 const db = require("../models/db");
 
-exports.getAllBookings = async (req, res) => {
+exports.getAllBooking = async (req, res) => {
   try {
-    const token = req.headers.authorization;
-    const userId = getUserIdFromJWT(token); // Get the user's ID from the JWT token
-    if (!userId) {
-      throw new Error("User ID not found");
-    }
-
-    // Fetch bookings only for the logged-in user
+    // ดึงข้อมูลการจองทั้งหมด รวมถึงข้อมูล Field และ User โดยเรียงจากล่าสุดไปเก่าสุด
     const bookings = await db.Booking.findMany({
-      where: { userId: userId },
+      include: { 
+        field: true, // ใช้ตัวพิมพ์เล็ก
+        user: true   // ใช้ตัวพิมพ์เล็ก
+      },
+      orderBy: {
+        id: 'desc' // เรียงตาม dueDate แบบลดลำดับ (จากใหม่ไปเก่า)
+      }
     });
 
     res.json(bookings);
@@ -22,16 +22,52 @@ exports.getAllBookings = async (req, res) => {
   }
 };
 
-exports.createBooking = async (req, res, next) => {
-  const data = req.body;
-  const token = req.headers.authorization;
-  const userId = getUserIdFromJWT(token);
-  console.log(data);
+
+exports.getBookingsByID = async (req, res) => {
+  const { id } = req.params;
   try {
-    if (!userId) {
-      throw new Error('User data is missing or incomplete');
+    if (!id) {
+      throw new Error("User ID not found");
     }
 
+    // Fetch bookings only for the logged-in user
+    const bookings = await db.Booking.findMany({
+      where: { userId: Number(id) },
+      orderBy: {
+        id: 'desc' // เรียงตาม dueDate แบบลดลำดับ (จากใหม่ไปเก่า)
+      }
+    });
+ 
+    res.json(bookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+};
+
+exports.getAllBookings = async (req, res) => {
+  try {
+
+    // Fetch bookings only for the logged-in user
+    const bookings = await db.Booking.findMany({
+      orderBy: {
+        id: 'desc' // เรียงตาม dueDate แบบลดลำดับ (จากใหม่ไปเก่า)
+      }
+    });
+ 
+    res.json(bookings);
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+};
+
+exports.createBooking = async (req, res, next) => {
+  const data = req.body;
+  const { id } = req.params;
+  console.log(data);
+
+  try {
     // Check if there's an existing booking with the same date and time
     const existingBooking = await db.Booking.findMany({
       where: {
@@ -47,32 +83,55 @@ exports.createBooking = async (req, res, next) => {
       return res.status(400).json({ error: 'Booking already exists for this date and time.' });
     }
 
-    const rs = await db.Booking.create({
-      data: {
-        ...data,
-        userId: userId
-      }
+    // Proceed to create a new booking
+    let bookingData = { ...data };
+
+    // If userId is missing, use the id from the params
+    if (!data.userId && id) {
+      bookingData.userId = Number(id);
+    }
+
+    const newBooking = await db.Booking.create({
+      data: bookingData,
     });
-    res.json({ msg: 'Create OK', result: rs }); 
+
+    return res.json({ msg: 'Create OK', result: newBooking });
+
   } catch (err) {
     return res.status(500).json({ error: err.message });
   }
 };
 
 
-exports.updateBooking = async (req, res) => {
+
+exports.updateBooking = async (req, res, next) => {
+  const data = req.body;
+  const bookingId = parseInt(req.params.id);  // Assuming booking ID is passed in the URL
   try {
-    const { id } = req.params;
-    const updatedBooking = await db.Booking.update({
-      where: { id: parseInt(id) },
-      data: req.body,
+    
+    // Check if the booking exists
+    const existingBooking = await db.Booking.findUnique({
+      where: { id: bookingId }
     });
-    res.json(updatedBooking);
+
+    if (!existingBooking) {
+      return res.status(404).json({ error: 'Booking not found.' });
+    }
+
+    // Update the booking
+    const updatedBooking = await db.Booking.update({
+      where: { id: bookingId },
+      data: {
+        ...data,
+      }
+    });
+
+    res.json({ msg: 'Booking updated successfully', result: updatedBooking });
   } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
+    return res.status(500).json({ error: err.message });
   }
 };
+
 
 exports.deleteBooking = async (req, res) => {
   try {
@@ -87,23 +146,4 @@ exports.deleteBooking = async (req, res) => {
   }
 };
 
-exports.getUserBookings = async (req, res) => {
-  try {
-    const token = req.headers.authorization;
-    const userId = getUserIdFromJWT(token);
 
-    if (!userId) {
-      return res.status(400).json({ message: "Invalid user ID" });
-    }
-
-    const userBookings = await db.Booking.findMany({
-      where: { userId: parseInt(userId) },
-      include: { Field: true }, // Include the associated Field data
-    });
-
-    res.json(userBookings);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
-  }
-};
