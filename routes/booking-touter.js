@@ -1,26 +1,26 @@
-// routes/routes.js
 const express = require('express');
 const router = express.Router();
 const bookingController = require('../controllers/booking-controller');
 
-router.get('/',bookingController.getAllBooking);
+// เส้นทางสำหรับดึงข้อมูลการจองทั้งหมด
+router.get('/', bookingController.getAllBooking);
 
-// GET By Id bookings
-router.get('/bookings/:id/id',bookingController.getBookingsByID);
+// เส้นทางสำหรับดึงข้อมูลการจองของผู้ใช้ตาม ID
+router.get('/bookings/:id/id', bookingController.getBookingsByID);
 
-router.get('/bookings/all',bookingController.getAllBookings);
+// เส้นทางสำหรับดึงข้อมูลการจองทั้งหมด (ไม่จำกัดผู้ใช้)
+router.get('/bookings/all', bookingController.getAllBookings);
 
-// CREATE a new booking
-router.post('/bookings/create/:id',bookingController.createBooking);
+// เส้นทางสำหรับสร้างการจองใหม่
+router.post('/bookings/create/:id', bookingController.createBooking);
 
-// UPDATE a booking
-router.put('/bookings/:id',bookingController.updateBooking);
+// เส้นทางสำหรับอัปเดตการจองตาม ID
+router.put('/bookings/:id', bookingController.updateBooking);
 
-// DELETE a booking
-router.delete('/bookings/:id',bookingController.deleteBooking);
+// เส้นทางสำหรับลบการจองตาม ID
+router.delete('/bookings/:id', bookingController.deleteBooking);
 
+// เส้นทางสำหรับดึงข้อมูลการจองของผู้ใช้ (ถูกคอมเมนต์ไว้)
 // router.get("/user-bookings", bookingController.getUserBookings);
 
-
-module.exports = router;
-
+module.exports = router

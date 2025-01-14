@@ -1,146 +1,140 @@
 const db = require("../models/db");
+// นำเข้าฐานข้อมูลผ่านโมดูล db
 
 module.exports.register = async (req, res, next) => {
+  // ฟังก์ชันสำหรับการลงทะเบียนผู้ใช้ใหม่
   const { username, password, confirmPassword, email } = req.body;
   try {
-    // validation
+    // ตรวจสอบว่า input ไม่ว่าง
     if (!(username && password && confirmPassword)) {
       return next(new Error("Fulfill all inputs"));
     }
+    // ตรวจสอบว่า confirmPassword ตรงกับ password หรือไม่
     if (confirmPassword !== password) {
       throw new Error("confirm password not match");
     }
 
-    const data = {
-      username,
-      password,
-      email
-    };
+    // เตรียมข้อมูลผู้ใช้
+    const data = { username, password, email };
 
-    const rs = await db.user.create({ data  })
-    console.log(rs)
+    // สร้างผู้ใช้ใหม่ในฐานข้อมูล
+    const rs = await db.user.create({ data });
+    console.log(rs);
 
-    res.json({ msg: 'Register successful' })
+    res.json({ msg: 'Register successful' });
+    // ส่งข้อความยืนยันการลงทะเบียนสำเร็จกลับไป
   } catch (err) {
     next(err);
+    // ส่ง error ไปยัง middleware สำหรับจัดการข้อผิดพลาด
   }
 };
 
 module.exports.login = async (req, res, next) => {
-  const {username, password} = req.body
+  // ฟังก์ชันสำหรับการเข้าสู่ระบบ
+  const { username, password } = req.body;
   try {
-    // validation
-    if( !(username.trim() && password.trim()) ) {
-      throw new Error('username or password must not blank')
+    // ตรวจสอบว่า input ไม่ว่าง
+    if (!(username.trim() && password.trim())) {
+      throw new Error('username or password must not blank');
     }
-    // find username in db.user
-    const user = await db.user.findFirstOrThrow({ where : { username }})
-    // check password
+
+    // ค้นหาผู้ใช้ในฐานข้อมูลตาม username
+    const user = await db.user.findFirstOrThrow({ where: { username } });
+
+    // ตรวจสอบว่า password ตรงกันหรือไม่
     if (user.password !== password) {
       throw new Error('Invalid login credentials');
     }
-    // issue jwt token 
-    // const payload = { id: user.id }
-    // const token = jwt.sign(payload, process.env.JWT_SECRET, {
-    //   expiresIn: '30d'
-    // })
-    // console.log(token)
-    res.json(user)
-  }catch(err) {
-    next(err)
+
+    // **หมายเหตุ**: มีส่วนออกความคิดเห็นเกี่ยวกับการสร้าง JWT token (ถูกคอมเมนต์ไว้)
+
+    res.json(user);
+    // ส่งข้อมูลผู้ใช้กลับไป
+  } catch (err) {
+    next(err);
+    // ส่ง error ไปยัง middleware สำหรับจัดการข้อผิดพลาด
   }
 };
 
-
 module.exports.updateUser = async (req, res, next) => {
+  // ฟังก์ชันสำหรับอัปเดตข้อมูลผู้ใช้
   const { username, password, email } = req.body;
   const { id } = req.params;
-  
-  // แปลง id ให้เป็น Integer
+
+  // แปลง id ให้เป็นจำนวนเต็ม
   const userId = parseInt(id, 10);
 
   if (isNaN(userId)) {
     return next(new Error('Invalid user ID'));
+    // ส่ง error หาก ID ไม่ถูกต้อง
   }
 
   try {
-    // ตรวจสอบว่าข้อมูลที่กรอกไม่ว่างเปล่า
+    // ตรวจสอบว่า input ไม่ว่าง
     if (!(username && password && email)) {
       return next(new Error("Fulfill all inputs"));
     }
 
-    // หาผู้ใช้จากฐานข้อมูล
-    const user = await db.user.findFirstOrThrow({
-      where: { id: userId },  // ใช้ userId ที่แปลงเป็น Integer แล้ว
-    });
+    // ตรวจสอบว่าผู้ใช้มีอยู่ในฐานข้อมูลหรือไม่
+    const user = await db.user.findFirstOrThrow({ where: { id: userId } });
 
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // อัปเดตข้อมูลผู้ใช้
+    // อัปเดตข้อมูลผู้ใช้ในฐานข้อมูล
     const updatedUser = await db.user.update({
-      where: { id: userId },  // ใช้ userId ที่แปลงเป็น Integer แล้ว
-      data: {
-        username: username,
-        password: password, // ในที่นี้ยังใช้ password เป็นข้อความทั่วไป, คุณอาจจะต้องเข้ารหัสมัน
-        email: email,
-        updatedAt: new Date(),
-      },
+      where: { id: userId },
+      data: { username, password, email, updatedAt: new Date() },
     });
 
     res.json({ msg: 'User updated successfully', user: updatedUser });
+    // ส่งข้อความยืนยันการอัปเดตสำเร็จพร้อมข้อมูลผู้ใช้ใหม่
   } catch (err) {
     next(err);
+    // ส่ง error ไปยัง middleware สำหรับจัดการข้อผิดพลาด
   }
 };
 
 module.exports.deleteUser = async (req, res, next) => {
-  const { id } = req.params;  // ดึง id ผู้ใช้จากพารามิเตอร์ใน URL
-  
-  // แปลง id ให้เป็น Integer
+  // ฟังก์ชันสำหรับลบข้อมูลผู้ใช้
+  const { id } = req.params;
+
+  // แปลง id ให้เป็นจำนวนเต็ม
   const userId = parseInt(id, 10);
 
   if (isNaN(userId)) {
     return next(new Error('Invalid user ID'));
+    // ส่ง error หาก ID ไม่ถูกต้อง
   }
 
   try {
-    // หาผู้ใช้จากฐานข้อมูลก่อนว่ามีอยู่หรือไม่
-    const user = await db.user.findFirstOrThrow({
-      where: { id: userId },
-    });
+    // ตรวจสอบว่าผู้ใช้มีอยู่ในฐานข้อมูลหรือไม่
+    const user = await db.user.findFirstOrThrow({ where: { id: userId } });
 
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // ลบข้อมูลผู้ใช้
-    await db.user.delete({
-      where: { id: userId },
-    });
+    // ลบผู้ใช้ในฐานข้อมูล
+    await db.user.delete({ where: { id: userId } });
 
     res.json({ msg: 'User deleted successfully' });
+    // ส่งข้อความยืนยันการลบสำเร็จกลับไป
   } catch (err) {
     next(err);
+    // ส่ง error ไปยัง middleware สำหรับจัดการข้อผิดพลาด
   }
 };
 
-exports.getUsers =async(req,res,next)=>{
+exports.getUsers = async (req, res, next) => {
+  // ฟังก์ชันสำหรับดึงรายชื่อผู้ใช้
   try {
     const users = await db.user.findMany({
       select: {
-        id: true,
-        username: true,
+        id: true, // ดึงเฉพาะ `id`
+        username: true, // และ `username`
       },
-      where: { role: "user" },
+      where: { role: "user" }, // เงื่อนไข: role เป็น "user"
     });
+
     res.status(200).json(users);
+    // ส่งรายชื่อผู้ใช้กลับไปในรูปแบบ JSON
   } catch (error) {
     console.error("Error fetching users:", error);
     res.status(500).json({ error: "Internal Server Error" });
+    // ส่ง error 500 หากเกิดปัญหา
   }
 };
-
-
-
