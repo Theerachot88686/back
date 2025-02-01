@@ -20,7 +20,7 @@ router.put('/bookings/:id', bookingController.updateBooking);
 // เส้นทางสำหรับลบการจองตาม ID
 router.delete('/bookings/:id', bookingController.deleteBooking);
 
-// เส้นทางสำหรับดึงข้อมูลการจองของผู้ใช้ (ถูกคอมเมนต์ไว้)
-// router.get("/user-bookings", bookingController.getUserBookings);
+// เส้นทางสำหรับ export ข้อมูลการจองตามเดือน
+router.get('/export', bookingController.exportBookings);
 
-module.exports = router
+module.exports = router;

@@ -11,6 +11,16 @@ generator client {
 }
 
 
+model Payment {
+  id             Int      @id @default(autoincrement())
+  bookingId      Int      @unique
+  paymentStatus  Status   @default(PENDING)  // ใช้ ENUM Status เพื่อกำหนดสถานะการชำระเงิน
+  paymentDate    DateTime?
+  Booking        Booking @relation("BookingPayment", fields: [bookingId], references: [id], onDelete: Cascade)
+  
+  @@map("payments")
+}
+
 model User {
   id        Int       @id @default(autoincrement())
   username  String    @unique @db.VarChar(30)
@@ -18,12 +28,11 @@ model User {
   email     String?
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
-  bookings  Booking[]
+  bookings  Booking[]  
   role      String    @default("user") 
 
   @@map("users")
 }
-
 
 model Field {
   id           Int       @id @default(autoincrement())
@@ -46,6 +55,9 @@ model Booking {
   userId    Int
   field     Field    @relation(fields: [fieldId], references: [id])
   fieldId   Int
+  Payment   Payment? @relation("BookingPayment")  // เชื่อมกับ Payment
+
+  @@map("bookings")
 }
 
 model BookingHistory {
@@ -61,8 +73,6 @@ model BookingHistory {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-
-
 
 enum Status {
   PENDING

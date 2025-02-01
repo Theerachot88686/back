@@ -17,4 +17,6 @@ router.put('/update/:id',authController.updateUser)
 // เส้นทางสำหรับลบผู้ใช้ตาม ID
 router.delete('/delete/user/:id', authController.deleteUser)
 
+router.get('/users/:username/last-login', authController.getLastLogin);
+
 module.exports = router

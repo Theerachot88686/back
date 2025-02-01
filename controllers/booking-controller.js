@@ -1,6 +1,5 @@
-const getUserIdFromJWT = require("../helpers/decodeJWT");
 const db = require("../models/db");
-// นำเข้าโมดูลสำหรับถอดรหัส JWT และฐานข้อมูล
+const { Parser } = require('json2csv');
 
 exports.getAllBooking = async (req, res) => {
   // ฟังก์ชันสำหรับดึงข้อมูลการจองทั้งหมด
@@ -128,6 +127,54 @@ exports.deleteBooking = async (req, res) => {
     });
 
     res.json({ message: "Booking deleted" }); // ส่งข้อความยืนยันการลบสำเร็จ
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Server Error");
+  }
+};
+
+exports.exportBookings = async (req, res) => {
+  // ฟังก์ชันสำหรับ export ข้อมูลการจองที่กรองตามเดือน
+  const { month, year } = req.query; // รับเดือนและปีจาก query string
+
+  try {
+    // ตรวจสอบว่ามีเดือนและปีใน request หรือไม่
+    if (!month || !year) {
+      return res.status(400).json({ error: "Month and year are required." });
+    }
+
+    // สร้างวันเริ่มต้นและวันสิ้นสุดของเดือนนั้น
+    const startDate = new Date(`${year}-${month}-01`);
+    const endDate = new Date(startDate);
+    endDate.setMonth(endDate.getMonth() + 1); // เพิ่มเดือนเพื่อให้ได้วันสิ้นเดือน
+
+    // ดึงข้อมูลการจองที่อยู่ในช่วงเดือนที่เลือก
+    const bookings = await db.Booking.findMany({
+      where: {
+        dueDate: {
+          gte: startDate, // วันที่ต้องมากกว่าหรือเท่ากับวันเริ่มต้น
+          lt: endDate // วันที่ต้องน้อยกว่าวันสิ้นเดือน
+        }
+      },
+      include: { 
+        field: true, // ดึงข้อมูลสนาม
+        user: true   // ดึงข้อมูลผู้ใช้
+      },
+      orderBy: { id: 'desc' } // เรียงลำดับจากใหม่ไปเก่า
+    });
+
+    if (bookings.length === 0) {
+      return res.status(404).json({ message: "No bookings found for this month." });
+    }
+
+    // แปลงข้อมูลเป็น CSV
+    const json2csvParser = new Parser();
+    const csv = json2csvParser.parse(bookings);
+
+    // ตั้งค่า header เพื่อให้เบราว์เซอร์รู้ว่าจะต้องดาวน์โหลดเป็นไฟล์ CSV
+    res.header('Content-Type', 'text/csv');
+    res.attachment(`bookings-${month}-${year}.csv`);
+    return res.send(csv); // ส่งไฟล์ CSV กลับไป
   } catch (err) {
     console.error(err);
     res.status(500).send("Server Error");

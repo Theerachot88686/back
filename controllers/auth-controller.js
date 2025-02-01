@@ -1,4 +1,5 @@
 const db = require("../models/db");
+const moment = require('moment');
 // นำเข้าฐานข้อมูลผ่านโมดูล db
 
 module.exports.register = async (req, res, next) => {
@@ -55,6 +56,26 @@ module.exports.login = async (req, res, next) => {
     // ส่ง error ไปยัง middleware สำหรับจัดการข้อผิดพลาด
   }
 };
+
+module.exports.getLastLogin = async (req, res, next) => {
+  const { username } = req.params;
+  try {
+    const user = await db.user.findFirstOrThrow({
+      where: { username },
+      select: { last_login: true },
+    });
+
+    const lastLoginFormatted = user.last_login
+      ? moment(user.last_login).format('YYYY-MM-DD HH:mm:ss')
+      : 'Never logged in';
+
+    res.json({ username, last_login: lastLoginFormatted });
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 
 module.exports.updateUser = async (req, res, next) => {
   // ฟังก์ชันสำหรับอัปเดตข้อมูลผู้ใช้

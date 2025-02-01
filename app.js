@@ -1,12 +1,12 @@
-require('dotenv').config();  // โหลดไฟล์ .env เพื่อใช้งานค่าตัวแปรสภาพแวดล้อม
-const express = require('express');  // นำเข้า express สำหรับสร้างเว็บเซิร์ฟเวอร์
-const cors = require('cors');  // นำเข้า cors สำหรับจัดการ Cross-Origin Resource Sharing (CORS)
-const notFound = require('./middlewares/notFound');  // Middleware สำหรับจัดการ 404 errors
-const errorMiddleware = require('./middlewares/error');  // Middleware สำหรับจัดการ errors ทั่วไป
-const authRoute = require('./routes/auth-routes');  // เส้นทางสำหรับการยืนยันตัวตน
-const fieldRoute = require('./routes/field-routes');  // เส้นทางสำหรับการจัดการฟิลด์
-const bookingRoute = require('./routes/booking-touter');  // เส้นทางสำหรับการจัดการการจอง
-const pullRoute = require('./routes/pull-router');  // เส้นทางสำหรับดึงข้อมูลผู้ใช้ที่มี role = "user"
+require('dotenv').config();  
+const express = require('express');  
+const cors = require('cors');  
+const notFound = require('./middlewares/notFound');  
+const errorMiddleware = require('./middlewares/error'); 
+const authRoute = require('./routes/auth-routes');  
+const fieldRoute = require('./routes/field-routes');  
+const bookingRoute = require('./routes/booking-touter');  
+const pullRoute = require('./routes/pull-router'); 
 
 const app = express();  // สร้างแอปพลิเคชัน Express
 
