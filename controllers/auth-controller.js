@@ -2,7 +2,6 @@ const { Resend } = require("resend");
 
 const db = require("../models/db");
 const crypto = require("crypto");
-const moment = require("moment");
 const nodemailer = require("nodemailer");
 
 // นำเข้าฐานข้อมูลผ่านโมดูล db
