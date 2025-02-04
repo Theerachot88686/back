@@ -306,7 +306,7 @@ exports.completeBooking = async (req, res) => {
 };
 
 // ดึงการจองปัจจุบัน (Pending, Confirm)
-exports.getCurrentBookings = async (req, res) => {
+exports.getCurrentBookingsID = async (req, res) => {
   const userId = parseInt(req.params.userId);
   try {
     const bookings = await prisma.booking.findMany({

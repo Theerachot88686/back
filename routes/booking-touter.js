@@ -29,7 +29,7 @@ router.put('/bookings/:id/cancel', bookingController.cancelBooking);
 router.put('/bookings/:id/confirm', bookingController.confirmBooking);
 router.put('/bookings/:id/complete', bookingController.completeBooking);
 
-router.get('/bookings/current/:userId', bookingController.getCurrentBookings);
+router.get('/bookings/current/:userId', bookingController.getCurrentBookingsID);
 router.get('/bookings/historys/:userId', bookingController.getHistoryBookingsID);
 
 // routes/booking.js
