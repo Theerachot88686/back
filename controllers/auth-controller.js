@@ -1,6 +1,12 @@
+const { Resend } = require("resend");
+
 const db = require("../models/db");
-const moment = require('moment');
+const crypto = require("crypto");
+const moment = require("moment");
+const nodemailer = require("nodemailer");
+
 // นำเข้าฐานข้อมูลผ่านโมดูล db
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 module.exports.register = async (req, res, next) => {
   // ฟังก์ชันสำหรับการลงทะเบียนผู้ใช้ใหม่
@@ -22,7 +28,7 @@ module.exports.register = async (req, res, next) => {
     const rs = await db.user.create({ data });
     console.log(rs);
 
-    res.json({ msg: 'Register successful' });
+    res.json({ msg: "Register successful" });
     // ส่งข้อความยืนยันการลงทะเบียนสำเร็จกลับไป
   } catch (err) {
     next(err);
@@ -36,7 +42,7 @@ module.exports.login = async (req, res, next) => {
   try {
     // ตรวจสอบว่า input ไม่ว่าง
     if (!(username.trim() && password.trim())) {
-      throw new Error('username or password must not blank');
+      throw new Error("username or password must not blank");
     }
 
     // ค้นหาผู้ใช้ในฐานข้อมูลตาม username
@@ -44,8 +50,13 @@ module.exports.login = async (req, res, next) => {
 
     // ตรวจสอบว่า password ตรงกันหรือไม่
     if (user.password !== password) {
-      throw new Error('Invalid login credentials');
+      throw new Error("Invalid login credentials");
     }
+
+    const updatedUser = await db.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
 
     // **หมายเหตุ**: มีส่วนออกความคิดเห็นเกี่ยวกับการสร้าง JWT token (ถูกคอมเมนต์ไว้)
 
@@ -57,26 +68,6 @@ module.exports.login = async (req, res, next) => {
   }
 };
 
-module.exports.getLastLogin = async (req, res, next) => {
-  const { username } = req.params;
-  try {
-    const user = await db.user.findFirstOrThrow({
-      where: { username },
-      select: { last_login: true },
-    });
-
-    const lastLoginFormatted = user.last_login
-      ? moment(user.last_login).format('YYYY-MM-DD HH:mm:ss')
-      : 'Never logged in';
-
-    res.json({ username, last_login: lastLoginFormatted });
-  } catch (err) {
-    next(err);
-  }
-};
-
-
-
 module.exports.updateUser = async (req, res, next) => {
   // ฟังก์ชันสำหรับอัปเดตข้อมูลผู้ใช้
   const { username, password, email } = req.body;
@@ -86,7 +77,7 @@ module.exports.updateUser = async (req, res, next) => {
   const userId = parseInt(id, 10);
 
   if (isNaN(userId)) {
-    return next(new Error('Invalid user ID'));
+    return next(new Error("Invalid user ID"));
     // ส่ง error หาก ID ไม่ถูกต้อง
   }
 
@@ -105,7 +96,7 @@ module.exports.updateUser = async (req, res, next) => {
       data: { username, password, email, updatedAt: new Date() },
     });
 
-    res.json({ msg: 'User updated successfully', user: updatedUser });
+    res.json({ msg: "User updated successfully", user: updatedUser });
     // ส่งข้อความยืนยันการอัปเดตสำเร็จพร้อมข้อมูลผู้ใช้ใหม่
   } catch (err) {
     next(err);
@@ -121,7 +112,7 @@ module.exports.deleteUser = async (req, res, next) => {
   const userId = parseInt(id, 10);
 
   if (isNaN(userId)) {
-    return next(new Error('Invalid user ID'));
+    return next(new Error("Invalid user ID"));
     // ส่ง error หาก ID ไม่ถูกต้อง
   }
 
@@ -132,7 +123,7 @@ module.exports.deleteUser = async (req, res, next) => {
     // ลบผู้ใช้ในฐานข้อมูล
     await db.user.delete({ where: { id: userId } });
 
-    res.json({ msg: 'User deleted successfully' });
+    res.json({ msg: "User deleted successfully" });
     // ส่งข้อความยืนยันการลบสำเร็จกลับไป
   } catch (err) {
     next(err);
@@ -157,5 +148,92 @@ exports.getUsers = async (req, res, next) => {
     console.error("Error fetching users:", error);
     res.status(500).json({ error: "Internal Server Error" });
     // ส่ง error 500 หากเกิดปัญหา
+  }
+};
+
+module.exports.requestResetPassword = async (req, res, next) => {
+  const { email } = req.body;
+
+  try {
+    const user = await db.user.findFirst({ where: { email } });
+
+    if (!user) {
+      return res.status(404).json({ msg: "Email not found" });
+    }
+
+    // สร้างรหัสลับ
+    // สร้างรหัสลับแบบ 6 หลัก (เฉพาะตัวเลข)
+    const resetToken = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // ตั้งเวลาใช้งานรหัสลับเหลือ 5 นาที (300,000 มิลลิวินาที)
+    const resetTokenExpiry = new Date(Date.now() + 5 * 60 * 1000);
+
+    // บันทึกรหัสลับในฐานข้อมูล
+    await db.user.update({
+      where: { email },
+      data: { resetToken, resetTokenExpiry },
+    });
+
+    // ตั้งค่า Nodemailer สำหรับ Gmail SMTP
+    const transporter = nodemailer.createTransport({
+      service: "gmail",
+      auth: {
+        user: "taikung3133@gmail.com", // เปลี่ยนเป็นอีเมล Gmail ของคุณ
+        pass: "cqgz hczx yayd wolu", // ใช้ App Password แทนรหัสผ่านปกติ
+      },
+    });
+
+    // ตั้งค่าอีเมลที่จะส่ง
+    const mailOptions = {
+      from: "your_email@gmail.com", // อีเมลผู้ส่ง (ต้องตรงกับ SMTP)
+      to: email, // อีเมลผู้รับ
+      subject: "Reset your password",
+      html: `
+        <h3>คุณขอรีเซ็ตรหัสผ่าน</h3>
+        <p>กรุณากรอกรหัสลับต่อไปนี้ในหน้าเว็บเพื่อรีเซ็ตรหัสผ่านของคุณ:</p>
+        <p><strong>${resetToken}</strong></p>
+        
+      `,
+    };
+
+    // ส่งอีเมล
+    await transporter.sendMail(mailOptions);
+
+    res.json({ msg: "Password reset email sent", resetToken });
+  } catch (err) {
+    console.error("Error:", err);
+    res.status(500).json({ msg: "Something went wrong", error: err.message });
+  }
+};
+
+// ฟังก์ชันสำหรับรีเซ็ตรหัสผ่าน
+module.exports.resetPassword = async (req, res, next) => {
+  const { token, newPassword } = req.body;
+
+  try {
+    const user = await db.user.findFirst({
+      where: {
+        resetToken: token,
+        resetTokenExpiry: { gte: new Date() }, // ตรวจสอบว่ารหัสลับยังไม่หมดอายุ
+      },
+    });
+
+    if (!user) {
+      throw new Error("Invalid or expired token");
+    }
+
+    // อัปเดตรหัสผ่านใหม่
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        password: newPassword,
+        resetToken: null, // ลบรหัสลับหลังการใช้
+        resetTokenExpiry: null,
+      },
+    });
+
+    res.json({ msg: "Password reset successfully" }); // ส่งข้อความยืนยันการรีเซ็ตรหัสผ่าน
+  } catch (err) {
+    next(err); // ส่ง error ไปยัง middleware สำหรับจัดการข้อผิดพลาด
   }
 };

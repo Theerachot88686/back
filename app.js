@@ -1,6 +1,8 @@
 require('dotenv').config();  
 const express = require('express');  
 const cors = require('cors');  
+const path = require('path');
+
 const notFound = require('./middlewares/notFound');  
 const errorMiddleware = require('./middlewares/error'); 
 const authRoute = require('./routes/auth-routes');  
@@ -15,6 +17,8 @@ app.use(cors());
 
 // ใช้ express.json() เพื่อให้แอปพลิเคชันสามารถรับ JSON payload ใน HTTP request
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ตั้งค่าเส้นทางสำหรับการใช้งาน API
 app.use('/auth', authRoute);  // สำหรับการจัดการการลงทะเบียนและการเข้าสู่ระบบ

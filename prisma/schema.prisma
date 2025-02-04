@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
@@ -10,26 +7,29 @@ generator client {
   provider = "prisma-client-js"
 }
 
-
 model Payment {
-  id             Int      @id @default(autoincrement())
-  bookingId      Int      @unique
-  paymentStatus  Status   @default(PENDING)  // ใช้ ENUM Status เพื่อกำหนดสถานะการชำระเงิน
-  paymentDate    DateTime?
-  Booking        Booking @relation("BookingPayment", fields: [bookingId], references: [id], onDelete: Cascade)
-  
+  id            Int       @id @default(autoincrement())
+  bookingId     Int       @unique
+  paymentStatus Statuspay @default(Pending)
+  paymentDate   DateTime?
+  slip          String?   // Field สำหรับเก็บ path ของรูปสลิปที่อัปโหลด
+  Booking       Booking   @relation("BookingPayment", fields: [bookingId], references: [id], onDelete: Cascade)
+
   @@map("payments")
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  username  String    @unique @db.VarChar(30)
-  password  String    @db.VarChar(72)
-  email     String?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  bookings  Booking[]  
-  role      String    @default("user") 
+  id          Int       @id @default(autoincrement())
+  username    String    @unique @db.VarChar(30)
+  password    String    @db.VarChar(72)
+  resetToken  String?
+  resetTokenExpiry DateTime?
+  email       String   @unique
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bookings    Booking[]
+  role        String    @default("user")
 
   @@map("users")
 }
@@ -46,36 +46,29 @@ model Booking {
   id        Int      @id @default(autoincrement())
   startTime DateTime
   endTime   DateTime
-  dueDate   DateTime 
+  dueDate   DateTime
   totalCost Float
-  status    String
+  status    Status   @default(Pending)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   user      User     @relation(fields: [userId], references: [id])
   userId    Int
   field     Field    @relation(fields: [fieldId], references: [id])
   fieldId   Int
-  Payment   Payment? @relation("BookingPayment")  // เชื่อมกับ Payment
+  Payment   Payment? @relation("BookingPayment")
 
   @@map("bookings")
 }
 
-model BookingHistory {
-  id        Int      @id @default(autoincrement())
-  bookingId Int
-  userId    Int
-  fieldId   Int
-  startTime DateTime
-  endTime   DateTime
-  dueDate   DateTime
-  totalCost Float
-  status    String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+enum Status {
+  Pending
+  Confirm
+  Cancel
+  Completed
 }
 
-enum Status {
-  PENDING
-  DOING
-  DONE
+enum Statuspay {
+  Pending
+  Confirm
+  Cancel
 }

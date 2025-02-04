@@ -1,182 +1,413 @@
-const db = require("../models/db");
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+const dayjs = require('dayjs');
+const db = new PrismaClient();
 const { Parser } = require('json2csv');
 
+
+
+// ฟังก์ชันสำหรับดึงข้อมูลการจองทั้งหมด
 exports.getAllBooking = async (req, res) => {
-  // ฟังก์ชันสำหรับดึงข้อมูลการจองทั้งหมด
   try {
-    const bookings = await db.Booking.findMany({
-      include: { 
-        field: true, // ดึงข้อมูลสนาม
-        user: true   // ดึงข้อมูลผู้ใช้
+    const bookings = await prisma.booking.findMany({
+      include: {
+        field: true,
+        user: true,
+        Payment: true,
       },
-      orderBy: { id: 'desc' } // เรียงลำดับจากใหม่ไปเก่า
     });
-
-    res.json(bookings); // ส่งข้อมูลการจองทั้งหมดกลับไป
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error"); // ส่งข้อความแสดงข้อผิดพลาดกรณีเซิร์ฟเวอร์มีปัญหา
-  }
-};
-
-exports.getBookingsByID = async (req, res) => {
-  // ฟังก์ชันสำหรับดึงข้อมูลการจองเฉพาะผู้ใช้ตาม `userId`
-  const { id } = req.params;
-  try {
-    if (!id) {
-      throw new Error("User ID not found"); // ตรวจสอบว่ามี `id` หรือไม่
-    }
-
-    const bookings = await db.Booking.findMany({
-      where: { userId: Number(id) }, // เงื่อนไขการค้นหาตาม `userId`
-      orderBy: { id: 'desc' } // เรียงลำดับจากใหม่ไปเก่า
-    });
- 
-    res.json(bookings); // ส่งข้อมูลการจองของผู้ใช้กลับไป
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
-  }
-};
-
-exports.getAllBookings = async (req, res) => {
-  // ฟังก์ชันสำหรับดึงข้อมูลการจองทั้งหมด (คล้ายกับ `getAllBooking` ด้านบน)
-  try {
-    const bookings = await db.Booking.findMany({
-      orderBy: { id: 'desc' } // เรียงลำดับจากใหม่ไปเก่า
-    });
-
     res.json(bookings);
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.createBooking = async (req, res, next) => {
-  // ฟังก์ชันสำหรับสร้างการจองใหม่
-  const data = req.body; // ข้อมูลการจองที่ผู้ใช้ส่งมา
-  const { id } = req.params;
-
+// ดึงการจองโดย ID
+exports.getBookingsByID = async (req, res) => {
+  const bookingId = parseInt(req.params.id);
   try {
-    // ตรวจสอบว่ามีการจองซ้ำกันในวันและเวลานั้นหรือไม่
-    const existingBooking = await db.Booking.findMany({
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        field: true,
+        user: true,
+        Payment: true,
+      },
+    });
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ดึงการจองทั้งหมด
+exports.getAllBookings = async (req, res) => {
+  try {
+    const bookings = await prisma.booking.findMany({
       where: {
-        AND: [
-          { dueDate: data.dueDate },
-          { startTime: data.startTime },
-          { endTime: data.endTime }
-        ]
-      }
+        status: {
+          in: ['Pending', 'Confirm', 'Completed'] // รับเฉพาะสถานะเหล่านี้
+        }
+      },
+      include: {
+        field: true,
+        user: true,
+        Payment: true,
+      },
     });
-
-    if (existingBooking.length > 0) {
-      return res.status(400).json({ error: 'Booking already exists for this date and time.' });
-      // ส่งข้อความแจ้งข้อผิดพลาดหากมีการจองซ้ำ
-    }
-
-    let bookingData = { ...data };
-    if (!data.userId && id) {
-      bookingData.userId = Number(id); // ใช้ `id` จากพารามิเตอร์หาก `userId` ไม่มีค่า
-    }
-
-    const newBooking = await db.Booking.create({
-      data: bookingData, // บันทึกการจองใหม่ลงฐานข้อมูล
-    });
-
-    return res.json({ msg: 'Create OK', result: newBooking }); // ส่งข้อความยืนยันการสร้างสำเร็จ
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
-exports.updateBooking = async (req, res, next) => {
-  // ฟังก์ชันสำหรับอัปเดตข้อมูลการจอง
-  const data = req.body;
-  const bookingId = parseInt(req.params.id); // รับ `bookingId` จากพารามิเตอร์
 
+// สร้างการจองใหม่
+exports.createBooking = async (req, res) => {
+  const userId = parseInt(req.params.id);
+  const { startTime, endTime, dueDate, totalCost, fieldId } = req.body;
+  let slipPath = null;
+  if (req.file) {
+    slipPath = req.file.path;
+  }
   try {
-    const existingBooking = await db.Booking.findUnique({
-      where: { id: bookingId } // ตรวจสอบว่าการจองมีอยู่จริง
+    const booking = await prisma.booking.create({
+      data: {
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        dueDate: new Date(dueDate),
+        totalCost: parseFloat(totalCost),
+        userId: userId,
+        fieldId: parseInt(fieldId),
+        // status จะถูกตั้งค่าเริ่มต้นเป็น Pending โดยอัตโนมัติ
+      },
+      include: {
+        field: true,
+        user: true,
+        Payment: true,
+      },
     });
-
-    if (!existingBooking) {
-      return res.status(404).json({ error: 'Booking not found.' });
-      // ส่งข้อความแจ้งข้อผิดพลาดหากไม่พบการจอง
+    // ถ้ามีการอัปโหลด slip ให้สร้าง record ใน Payment
+    if (slipPath) {
+      await prisma.payment.create({
+        data: {
+          bookingId: booking.id,
+          slip: slipPath,
+          // paymentStatus จะถูกตั้งค่าเริ่มต้นเป็น Pending
+        },
+      });
     }
-
-    const updatedBooking = await db.Booking.update({
-      where: { id: bookingId }, // อัปเดตข้อมูลการจอง
-      data: { ...data }
-    });
-
-    res.json({ msg: 'Booking updated successfully', result: updatedBooking });
-    // ส่งข้อความยืนยันการอัปเดตสำเร็จ
-  } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.json(booking);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
+// อัปเดตข้อมูลการจอง
+exports.updateBooking = async (req, res) => {
+  const bookingId = parseInt(req.params.id);
+  const { startTime, endTime, dueDate, totalCost, fieldId } = req.body;
+  try {
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        startTime: new Date(startTime),
+        endTime: new Date(endTime),
+        dueDate: new Date(dueDate),
+        totalCost: parseFloat(totalCost),
+        fieldId: parseInt(fieldId),
+      },
+      include: {
+        field: true,
+        user: true,
+        Payment: true,
+      },
+    });
+    res.json(updatedBooking);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ลบการจอง
 exports.deleteBooking = async (req, res) => {
-  // ฟังก์ชันสำหรับลบข้อมูลการจอง
-  const { id } = req.params;
-
+  const bookingId = parseInt(req.params.id);
   try {
-    await db.Booking.delete({
-      where: { id: parseInt(id) } // ลบการจองตาม `id`
+    await prisma.booking.delete({
+      where: { id: bookingId },
     });
-
-    res.json({ message: "Booking deleted" }); // ส่งข้อความยืนยันการลบสำเร็จ
-  } catch (err) {
-    console.error(err);
-    res.status(500).send("Server Error");
+    res.json({ message: "Booking deleted successfully" });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 };
 
+// ส่งออกข้อมูลการจอง (export)
 exports.exportBookings = async (req, res) => {
-  // ฟังก์ชันสำหรับ export ข้อมูลการจองที่กรองตามเดือน
   const { month, year } = req.query; // รับเดือนและปีจาก query string
 
   try {
-    // ตรวจสอบว่ามีเดือนและปีใน request หรือไม่
     if (!month || !year) {
       return res.status(400).json({ error: "Month and year are required." });
     }
 
-    // สร้างวันเริ่มต้นและวันสิ้นสุดของเดือนนั้น
     const startDate = new Date(`${year}-${month}-01`);
     const endDate = new Date(startDate);
-    endDate.setMonth(endDate.getMonth() + 1); // เพิ่มเดือนเพื่อให้ได้วันสิ้นเดือน
+    endDate.setMonth(endDate.getMonth() + 1);
 
-    // ดึงข้อมูลการจองที่อยู่ในช่วงเดือนที่เลือก
+    // ดึงข้อมูลการจองพร้อมราคาฟิลด์ที่เลือก
     const bookings = await db.Booking.findMany({
       where: {
         dueDate: {
-          gte: startDate, // วันที่ต้องมากกว่าหรือเท่ากับวันเริ่มต้น
-          lt: endDate // วันที่ต้องน้อยกว่าวันสิ้นเดือน
-        }
+          gte: startDate,
+          lt: endDate,
+        },
       },
-      include: { 
-        field: true, // ดึงข้อมูลสนาม
-        user: true   // ดึงข้อมูลผู้ใช้
+      include: {
+        field: true,
+        user: true,
       },
-      orderBy: { id: 'desc' } // เรียงลำดับจากใหม่ไปเก่า
+      orderBy: { id: "asc" }, // เรียงตาม bookingId จากน้อยไปมาก
     });
 
     if (bookings.length === 0) {
-      return res.status(404).json({ message: "No bookings found for this month." });
+      return res
+        .status(404)
+        .json({ message: "No bookings found for this month." });
     }
+
+    // คำนวณราคารวมสำหรับการจองทั้งหมดในเดือนนี้
+    let totalPrice = 0;
+    const formattedBookings = bookings.map((booking) => {
+      const fieldPricePerHour = booking.field ? booking.field.pricePerHour : 0; // ราคาแต่ละสนามต่อชั่วโมง
+    
+      // คำนวณเวลาระหว่าง startTime และ endTime
+      const startTime = new Date(booking.startTime);
+      const endTime = new Date(booking.endTime);
+    
+      // กำหนดตัวเลือกในการแสดงเวลาเป็นชั่วโมงและนาที
+      const options = { hour: '2-digit', minute: '2-digit' };
+      
+      // คำนวณผลต่างของเวลาเป็นชั่วโมง
+      const timeDifferenceInMilliseconds = endTime - startTime;
+      const hours = timeDifferenceInMilliseconds / (1000 * 60 * 60); // เปลี่ยนจากมิลลิวินาทีเป็นชั่วโมง
+    
+      // คำนวณราคาโดยการคูณเวลาที่ใช้กับราคาต่อชั่วโมงของสนาม
+      const bookingPrice = hours * fieldPricePerHour;
+    
+      totalPrice += bookingPrice; // คำนวณราคารวม
+    
+      return {
+        bookingId: booking.id,
+        fieldName: booking.field ? booking.field.name : "Unknown",
+        bookingDate: booking.dueDate
+          ? new Date(booking.dueDate).toLocaleDateString()
+          : "Unknown",
+        startTime: startTime.toLocaleTimeString([], options),  // แสดงเวลาแค่ชั่วโมงและนาที
+        endTime: endTime.toLocaleTimeString([], options),      // แสดงเวลาแค่ชั่วโมงและนาที
+        hours: hours.toFixed(2), // จำนวนชั่วโมง
+        price: bookingPrice.toFixed(2), // เพิ่มราคาแต่ละการจอง
+      };
+    });
+
+    // เพิ่มข้อมูลราคารวมในแถวสุดท้าย
+    const finalData = [...formattedBookings, { price: totalPrice.toFixed(2) }];
 
     // แปลงข้อมูลเป็น CSV
     const json2csvParser = new Parser();
-    const csv = json2csvParser.parse(bookings);
+    const csv = json2csvParser.parse(finalData);
 
     // ตั้งค่า header เพื่อให้เบราว์เซอร์รู้ว่าจะต้องดาวน์โหลดเป็นไฟล์ CSV
-    res.header('Content-Type', 'text/csv');
+    res.header("Content-Type", "text/csv");
     res.attachment(`bookings-${month}-${year}.csv`);
     return res.send(csv); // ส่งไฟล์ CSV กลับไป
   } catch (err) {
-    console.error(err);
+    console.error("Error exporting bookings:", err);
     res.status(500).send("Server Error");
   }
 };
+// =================== ฟังก์ชันใหม่สำหรับอัปเดตสถานะ ===================
+
+// 1. ยกเลิกการจอง (Cancel) - อัปเดตทั้ง Booking และ Payment เป็น Cancel
+exports.cancelBooking = async (req, res) => {
+  const bookingId = parseInt(req.params.id);
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { Payment: true },
+    });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: "Cancel" },
+      include: { field: true, user: true, Payment: true },
+    });
+    if (booking.Payment) {
+      await prisma.payment.update({
+        where: { bookingId: bookingId },
+        data: { paymentStatus: "Cancel" },
+      });
+    }
+    res.json(updatedBooking);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 2. ยืนยันการจอง (Confirm) - อัปเดตทั้ง Booking และ Payment เป็น Confirm
+exports.confirmBooking = async (req, res) => {
+  const bookingId = parseInt(req.params.id);
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { Payment: true },
+    });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: "Confirm" },
+      include: { field: true, user: true, Payment: true },
+    });
+    if (booking.Payment) {
+      await prisma.payment.update({
+        where: { bookingId: bookingId },
+        data: { paymentStatus: "Confirm" },
+      });
+    }
+    res.json(updatedBooking);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// 3. ทำเครื่องหมายการจองสำเร็จ (Complete) - อัปเดต Booking เป็น Completed (Payment ไม่เปลี่ยนแปลง)
+exports.completeBooking = async (req, res) => {
+  const bookingId = parseInt(req.params.id);
+  try {
+    const booking = await prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+    if (!booking) {
+      return res.status(404).json({ message: "Booking not found" });
+    }
+    const updatedBooking = await prisma.booking.update({
+      where: { id: bookingId },
+      data: { status: "Completed" },
+      include: { field: true, user: true, Payment: true },
+    });
+    res.json(updatedBooking);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ดึงการจองปัจจุบัน (Pending, Confirm)
+exports.getCurrentBookings = async (req, res) => {
+  const userId = parseInt(req.params.userId);
+  try {
+    const bookings = await prisma.booking.findMany({
+      where: {
+        userId: userId,
+        status: {
+          in: ['Pending', 'Confirm']
+        }
+      },
+      include: {
+        field: true,
+        user: true,
+        Payment: true
+      }
+    });
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ดึงประวัติการจอง (Completed, Cancel)
+exports.getHistoryBookingsID = async (req, res) => {
+  const userId = parseInt(req.params.userId);
+  try {
+    const bookings = await prisma.booking.findMany({
+      where: {
+        userId: userId,
+        status: {
+          in: ['Completed', 'Cancel']
+        }
+      },
+      include: {
+        field: true,
+        user: true,
+        Payment: true
+      }
+    });
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ดึงการจองปัจจุบัน (Pending, Confirm)
+exports.getCurrentBookings = async (req, res) => {
+  try {
+    const bookings = await prisma.booking.findMany({
+      where: {
+        status: {
+          in: ['Pending', 'Confirm']
+        }
+      },
+      include: {
+        field: true,
+        user: true,
+        Payment: true
+      }
+    });
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+// ดึงประวัติการจอง (Completed, Cancel)
+exports.getHistoryBookings = async (req, res) => {
+  try {
+    const bookings = await prisma.booking.findMany({
+      where: {
+        status: {
+          in: ['Completed', 'Cancel']
+        }
+      },
+      include: {
+        field: true,
+        user: true,
+        Payment: true
+      }
+    });
+    res.json(bookings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
+exports.getPendingBookings = async (req, res) => {
+  try {
+    const pendingBookings = await prisma.booking.findMany({
+      where: {
+        status: 'Pending',
+      },
+      include: {
+        field: true,
+        user: true,
+        Payment: true,
+      },
+    });
+    res.json(pendingBookings);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
