@@ -5,7 +5,6 @@ const crypto = require("crypto");
 const nodemailer = require("nodemailer");
 
 // นำเข้าฐานข้อมูลผ่านโมดูล db
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 module.exports.register = async (req, res, next) => {
   // ฟังก์ชันสำหรับการลงทะเบียนผู้ใช้ใหม่
