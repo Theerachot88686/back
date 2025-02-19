@@ -4,6 +4,7 @@ const dayjs = require("dayjs");
 const db = new PrismaClient();
 const { Parser } = require("json2csv");
 const nodemailer = require("nodemailer");
+const moment = require("moment-timezone");
 
 const sendEmail = async (recipient, subject, htmlContent) => {
   const transporter = nodemailer.createTransport({
@@ -96,9 +97,9 @@ exports.createBooking = async (req, res) => {
   try {
     const booking = await prisma.booking.create({
       data: {
-        startTime: new Date(startTime),
-        endTime: new Date(endTime),
-        dueDate: new Date(dueDate),
+        startTime: moment.tz(startTime, "Asia/Bangkok").toDate(),
+        endTime: moment.tz(endTime, "Asia/Bangkok").toDate(),
+        dueDate: moment.tz(dueDate, "Asia/Bangkok").toDate(),
         totalCost: parseFloat(totalCost),
         userId: userId,
         fieldId: parseInt(fieldId),
@@ -112,12 +113,31 @@ exports.createBooking = async (req, res) => {
 
     // ส่งอีเมลยืนยันการจองไปยังผู้ใช้
     const customerEmailContent = `
-      <h3>การจองของคุณสำเร็จ!</h3>
-      <p>คุณได้จองสนาม ${booking.field.name} จาก ${new Date(
-      booking.startTime
-    ).toLocaleString()} ถึง ${new Date(booking.endTime).toLocaleString()}</p>
-      <p>ค่าบริการรวม: ฿${booking.totalCost}</p>
-    `;
+    <h2 style="color: #2c3e50;">🎉 การจองของคุณเสร็จสมบูรณ์แล้ว!</h2>
+    <p>สวัสดีคุณ <strong>${booking.user.username}</strong>,</p>
+    <p>เราขอขอบคุณที่ใช้บริการของเรา! การจองของคุณได้รับการยืนยันเรียบร้อยแล้ว 🎯</p>
+    <p><strong>รายละเอียดการจอง:</strong></p>
+    <ul>
+      <li>🏟 <strong>สนาม:</strong> ${booking.field.name}</li>
+      <li>📅 <strong>วันที่:</strong> ${moment(booking.dueDate)
+        .tz("Asia/Bangkok")
+        .format("DD/MM/YYYY")}</li>
+      <li>⏰ <strong>เวลา:</strong> ${moment(booking.startTime)
+        .tz("Asia/Bangkok")
+        .format("HH:mm")} - ${moment(booking.endTime)
+      .tz("Asia/Bangkok")
+      .format("HH:mm")}</li>
+      <li>💰 <strong>ค่าบริการทั้งหมด:</strong> ฿${booking.totalCost.toFixed(
+        2
+      )}</li>
+    </ul>
+    <p>⏳ โปรดมาถึงสนามก่อนเวลาเพื่อเช็กอิน และอย่าลืมนำหลักฐานการจองของคุณมาด้วย!</p>
+    <p>หากมีข้อสงสัยหรือต้องการเปลี่ยนแปลงการจอง กรุณาติดต่อเราทางอีเมลนี้</p>
+    <p>ขอบคุณที่ใช้บริการ 🙏</p>
+    <hr />
+    <p style="font-size: 12px; color: #7f8c8d;">📌 อีเมลนี้เป็นการแจ้งเตือนอัตโนมัติ กรุณาอย่าตอบกลับ</p>
+  `;
+
     await sendEmail(
       booking.user.email,
       "การจองสนามของคุณสำเร็จ",
@@ -126,13 +146,33 @@ exports.createBooking = async (req, res) => {
 
     // ส่งอีเมลไปยังแอดมิน
     const adminEmailContent = `
-      <h3>การจองใหม่จากผู้ใช้ ${booking.user.username}</h3>
-      <p>การจองสนาม ${booking.field.name} จาก ${new Date(
-      booking.startTime
-    ).toLocaleString()} ถึง ${new Date(booking.endTime).toLocaleString()}</p>
-      <p>ค่าบริการรวม: ฿${booking.totalCost}</p>
-    `;
-    await sendEmail("taikung3133@gmail.com", "การจองใหม่จากผู้ใช้", adminEmailContent); // ใส่เมลแอดมิน
+    <h2 style="color: #c0392b;">📢 มีการจองใหม่เข้ามา!</h2>
+    <p>🆕 <strong>ผู้ใช้:</strong> ${booking.user.username} ได้ทำการจองสนาม</p>
+    <p><strong>รายละเอียดการจอง:</strong></p>
+    <ul>
+      <li>🏟 <strong>สนาม:</strong> ${booking.field.name}</li>
+      <li>📅 <strong>วันที่:</strong> ${moment(booking.dueDate)
+        .tz("Asia/Bangkok")
+        .format("DD/MM/YYYY")}</li>
+      <li>⏰ <strong>เวลา:</strong> ${moment(booking.startTime)
+        .tz("Asia/Bangkok")
+        .format("HH:mm")} - ${moment(booking.endTime)
+      .tz("Asia/Bangkok")
+      .format("HH:mm")}</li>
+      <li>💰 <strong>ค่าบริการทั้งหมด:</strong> ฿${booking.totalCost.toFixed(
+        2
+      )}</li>
+    </ul>
+    <p>📌 โปรดตรวจสอบสถานะการชำระเงินและอัปเดตระบบหากจำเป็น</p>
+    <p>🔍 ดูข้อมูลเพิ่มเติมที่ระบบหลังบ้าน</p>
+    <hr />
+    <p style="font-size: 12px; color: #7f8c8d;">📌 อีเมลนี้เป็นการแจ้งเตือนอัตโนมัติ</p>
+  `;
+    await sendEmail(
+      "taikung3133@gmail.com",
+      "การจองใหม่จากผู้ใช้",
+      adminEmailContent
+    );
 
     // ถ้ามีการอัปโหลด slip ให้สร้าง record ใน Payment
     if (slipPath) {
