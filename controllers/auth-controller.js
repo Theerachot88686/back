@@ -1,37 +1,63 @@
 const { Resend } = require("resend");
-
+const bcrypt = require("bcrypt"); // หรือใช้ bcryptjs แทน
 const db = require("../models/db");
 const crypto = require("crypto");
 const moment = require("moment");
 const nodemailer = require("nodemailer");
 
 module.exports.register = async (req, res, next) => {
-  // ฟังก์ชันสำหรับการลงทะเบียนผู้ใช้ใหม่
   const { username, password, confirmPassword, email } = req.body;
+
   try {
-    // ตรวจสอบว่า input ไม่ว่าง
-    if (!(username && password && confirmPassword)) {
-      return next(new Error("Fulfill all inputs"));
+    // ✅ ตรวจสอบว่า input ครบหรือไม่
+    if (!username || !password || !confirmPassword || !email) {
+      return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
     }
-    // ตรวจสอบว่า confirmPassword ตรงกับ password หรือไม่
+
+    // ✅ ตรวจสอบว่ารหัสผ่านมีความยาวไม่น้อยกว่า 8 ตัวอักษร
+    if (password.length < 8) {
+      return res
+        .status(400)
+        .json({ message: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร" });
+    }
+
+    // ✅ ตรวจสอบว่า confirmPassword ตรงกับ password หรือไม่
     if (confirmPassword !== password) {
-      throw new Error("confirm password not match");
+      return res
+        .status(400)
+        .json({ message: "รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน" });
     }
 
-    // เตรียมข้อมูลผู้ใช้
-    const data = { username, password, email };
+    // ✅ ตรวจสอบว่า "ชื่อผู้ใช้" มีอยู่ในฐานข้อมูลหรือยัง
+    const existingUsername = await db.user.findUnique({ where: { username } });
+    if (existingUsername) {
+      return res.status(400).json({ message: "ชื่อผู้ใช้นี้ถูกใช้ไปแล้ว" });
+    }
 
-    // สร้างผู้ใช้ใหม่ในฐานข้อมูล
-    const rs = await db.user.create({ data });
-    console.log(rs);
+    // ✅ ตรวจสอบว่า "อีเมล" มีอยู่ในฐานข้อมูลหรือยัง
+    const existingEmail = await db.user.findUnique({ where: { email } });
+    if (existingEmail) {
+      return res.status(400).json({ message: "อีเมลนี้ถูกใช้ไปแล้ว" });
+    }
 
-    res.json({ msg: "Register successful" });
-    // ส่งข้อความยืนยันการลงทะเบียนสำเร็จกลับไป
+    
+    const newUser = await db.user.create({
+      data: {
+        username,
+        email,
+        password,
+      },
+    });
+
+    console.log("ผู้ใช้ที่สร้าง:", newUser);
+
+    return res.status(201).json({ message: "สมัครสมาชิกสำเร็จ!" });
   } catch (err) {
-    next(err);
-    // ส่ง error ไปยัง middleware สำหรับจัดการข้อผิดพลาด
+    console.error("เกิดข้อผิดพลาด:", err);
+    return next(err);
   }
 };
+
 
 module.exports.login = async (req, res, next) => {
   // ฟังก์ชันสำหรับการเข้าสู่ระบบ
