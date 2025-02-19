@@ -346,7 +346,7 @@ exports.cancelBooking = async (req, res) => {
     const customerEmailContent = `
       <h3>การจองของคุณถูกยกเลิก</h3>
       <p>การจองของคุณสำหรับสนาม ${updatedBooking.field.name} ถูกยกเลิกแล้ว</p>
-      <p>หากคุณต้องการทำการจองใหม่ โปรดติดต่อเรา</p>
+      <p>หากคุณต้องการทำการจองใหม่ โปรดติดต่อเรา 088 355 3523</p>
     `;
     await sendEmail(
       updatedBooking.user.email,
