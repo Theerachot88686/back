@@ -4,6 +4,7 @@ const bookingController = require('../controllers/booking-controller');
 const multer = require('multer');
 const path = require('path');
 
+
 // ตั้งค่า storage สำหรับ multer (ตรวจสอบให้มีโฟลเดอร์ 'uploads' อยู่ในโปรเจค)
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {

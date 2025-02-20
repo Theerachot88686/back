@@ -5,6 +5,8 @@ const db = new PrismaClient();
 const { Parser } = require("json2csv");
 const nodemailer = require("nodemailer");
 const moment = require("moment-timezone");
+const { uploadToImgBB } = require("./imgbbUploader");
+const multer = require("multer");
 
 const sendEmail = async (recipient, subject, htmlContent) => {
   const transporter = nodemailer.createTransport({
@@ -86,15 +88,17 @@ exports.getAllBookings = async (req, res) => {
 };
 
 // สร้างการจองใหม่
-// สร้างการจองใหม่
 exports.createBooking = async (req, res) => {
   const userId = parseInt(req.params.id);
   const { startTime, endTime, dueDate, totalCost, fieldId } = req.body;
-  let slipPath = null;
-  if (req.file) {
-    slipPath = req.file.path;
-  }
+  let slipUrl = null;
+
   try {
+    // ตรวจสอบว่ามีไฟล์ slip อัปโหลดมาหรือไม่
+    if (req.file) {
+      slipUrl = await uploadToImgBB(req.file.path); // อัปโหลดไป ImgBB
+    }
+
     const booking = await prisma.booking.create({
       data: {
         startTime: moment.tz(startTime, "Asia/Bangkok").toDate(),
@@ -175,14 +179,16 @@ exports.createBooking = async (req, res) => {
     );
 
     // ถ้ามีการอัปโหลด slip ให้สร้าง record ใน Payment
-    if (slipPath) {
+    if (slipUrl) {
       await prisma.payment.create({
-        data: {
-          bookingId: booking.id,
-          slip: slipPath,
+        data: { 
+          bookingId: booking.id, 
+          slip: slipUrl,
+          paymentDate: moment().tz("Asia/Bangkok").toDate(), // บันทึกวันที่ชำระเงินเป็นเวลาปัจจุบัน
         },
       });
     }
+    
 
     res.json(booking);
   } catch (error) {
@@ -288,9 +294,7 @@ exports.exportBookings = async (req, res) => {
       return {
         bookingId: booking.id,
         fieldName: booking.field ? booking.field.name : "Unknown",
-        bookingDate: booking.dueDate
-          ? new Date(booking.dueDate).toLocaleDateString()
-          : "Unknown",
+        bookingDate: booking.dueDate ? new Date(booking.dueDate).toLocaleDateString() : "Unknown",
         startTime: startTime.toLocaleTimeString([], options), // แสดงเวลาแค่ชั่วโมงและนาที
         endTime: endTime.toLocaleTimeString([], options), // แสดงเวลาแค่ชั่วโมงและนาที
         hours: hours.toFixed(2), // จำนวนชั่วโมง
