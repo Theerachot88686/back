@@ -13,21 +13,6 @@ module.exports.register = async (req, res, next) => {
     if (!username || !password || !confirmPassword || !email) {
       return res.status(400).json({ message: "กรุณากรอกข้อมูลให้ครบถ้วน" });
     }
-
-    // ✅ ตรวจสอบว่ารหัสผ่านมีความยาวไม่น้อยกว่า 8 ตัวอักษร
-    if (password.length < 8) {
-      return res
-        .status(400)
-        .json({ message: "รหัสผ่านต้องมีอย่างน้อย 8 ตัวอักษร" });
-    }
-
-    // ✅ ตรวจสอบว่า confirmPassword ตรงกับ password หรือไม่
-    if (confirmPassword !== password) {
-      return res
-        .status(400)
-        .json({ message: "รหัสผ่านและยืนยันรหัสผ่านไม่ตรงกัน" });
-    }
-
     // ✅ ตรวจสอบว่า "ชื่อผู้ใช้" มีอยู่ในฐานข้อมูลหรือยัง
     const existingUsername = await db.user.findUnique({ where: { username } });
     if (existingUsername) {

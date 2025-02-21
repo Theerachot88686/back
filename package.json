@@ -40,7 +40,9 @@
     "pg-hstore": "^2.3.4",
     "resend": "^4.1.2",
     "sequelize": "^6.37.3",
-    "sequelize-cli": "^6.6.2"
+    "sequelize-cli": "^6.6.2",
+    "sharp": "^0.33.5",
+    "tesseract.js": "^6.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.9",

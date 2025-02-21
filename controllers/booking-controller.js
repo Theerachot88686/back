@@ -181,14 +181,13 @@ exports.createBooking = async (req, res) => {
     // ถ้ามีการอัปโหลด slip ให้สร้าง record ใน Payment
     if (slipUrl) {
       await prisma.payment.create({
-        data: { 
-          bookingId: booking.id, 
+        data: {
+          bookingId: booking.id,
           slip: slipUrl,
           paymentDate: moment().tz("Asia/Bangkok").toDate(), // บันทึกวันที่ชำระเงินเป็นเวลาปัจจุบัน
         },
       });
     }
-    
 
     res.json(booking);
   } catch (error) {
@@ -280,7 +279,7 @@ exports.exportBookings = async (req, res) => {
       const endTime = new Date(booking.endTime);
 
       // กำหนดตัวเลือกในการแสดงเวลาเป็นชั่วโมงและนาที
-      const options = { hour: "2-digit", minute: "2-digit" };
+      const options = { hour: "2-digit", minute: "2-digit", hour12: false };
 
       // คำนวณผลต่างของเวลาเป็นชั่วโมง
       const timeDifferenceInMilliseconds = endTime - startTime;
@@ -294,11 +293,13 @@ exports.exportBookings = async (req, res) => {
       return {
         bookingId: booking.id,
         fieldName: booking.field ? booking.field.name : "Unknown",
-        bookingDate: booking.dueDate ? new Date(booking.dueDate).toLocaleDateString() : "Unknown",
-        startTime: startTime.toLocaleTimeString([], options), // แสดงเวลาแค่ชั่วโมงและนาที
-        endTime: endTime.toLocaleTimeString([], options), // แสดงเวลาแค่ชั่วโมงและนาที
-        hours: hours.toFixed(2), // จำนวนชั่วโมง
-        price: bookingPrice.toFixed(2), // เพิ่มราคาแต่ละการจอง
+        bookingDate: booking.dueDate
+          ? new Date(booking.dueDate).toLocaleDateString("th-TH")
+          : "Unknown",
+        startTime: startTime.toLocaleTimeString("th-TH", options), // 24 ชั่วโมง
+        endTime: endTime.toLocaleTimeString("th-TH", options), // 24 ชั่วโมง
+        hours: hours.toFixed(2),
+        price: bookingPrice.toFixed(2),
       };
     });
 
