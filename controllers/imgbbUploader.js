@@ -1,17 +1,20 @@
-const imgbbUploader = require("imgbb-uploader");
-const fs = require("fs");
+const axios = require("axios");
+const FormData = require("form-data");
 
-async function uploadToImgBB(imagePath) {
+async function uploadToImgBB(imageBuffer) {
   try {
-    const apiKey = "22f98630c9d8892101d54d0ea43b68a1"; // ใส่ API Key 
-    const response = await imgbbUploader(apiKey, imagePath);
+    const apiKey = "ba9af64bebc3955c2b55f54fc52aca2f"; // ใส่ API Key
+    const form = new FormData();
+    form.append("key", apiKey);
+    form.append("image", imageBuffer.toString("base64")); // แปลง Buffer เป็น Base64
 
-    // ลบไฟล์จากเซิร์ฟเวอร์หลังจากอัปโหลดเสร็จ
-    fs.unlinkSync(imagePath);
-    
-    return response.url; // คืน URL ของรูป
+    const response = await axios.post("https://api.imgbb.com/1/upload", form, {
+      headers: form.getHeaders(),
+    });
+
+    return response.data.data.url; // คืน URL ของรูป
   } catch (error) {
-    console.error("Upload to ImgBB failed:", error);
+    console.error("❌ Upload to ImgBB failed:", error);
     throw error;
   }
 }

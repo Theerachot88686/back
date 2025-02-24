@@ -7,6 +7,11 @@ const nodemailer = require("nodemailer");
 const moment = require("moment-timezone");
 const { uploadToImgBB } = require("./imgbbUploader");
 const multer = require("multer");
+const { checkSlipWithSlipOK } = require('./slipokService');  // ใส่ path ให้ตรงกับที่อยู่ของไฟล์ที่มีฟังก์ชัน checkSlipWithSlipOK
+const Tesseract = require("tesseract.js");
+const fs = require("fs");
+const axios = require("axios");
+const path = require('path'); // เพิ่มบรรทัดนี้
 
 const sendEmail = async (recipient, subject, htmlContent) => {
   const transporter = nodemailer.createTransport({
@@ -31,6 +36,7 @@ const sendEmail = async (recipient, subject, htmlContent) => {
     console.error("Error sending email: ", error);
   }
 };
+
 
 // ฟังก์ชันสำหรับดึงข้อมูลการจองทั้งหมด
 exports.getAllBooking = async (req, res) => {
@@ -88,17 +94,46 @@ exports.getAllBookings = async (req, res) => {
 };
 
 // สร้างการจองใหม่
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/'); // เก็บไฟล์ในโฟลเดอร์ uploads
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname)); // สร้างชื่อไฟล์ที่ไม่ซ้ำ
+  }
+});
+const upload = multer({ storage: storage });
+
+// ฟังก์ชันสำหรับสร้างการจอง
 exports.createBooking = async (req, res) => {
   const userId = parseInt(req.params.id);
   const { startTime, endTime, dueDate, totalCost, fieldId } = req.body;
   let slipUrl = null;
 
   try {
-    // ตรวจสอบว่ามีไฟล์ slip อัปโหลดมาหรือไม่
+    // ตรวจสอบว่าอัปโหลดไฟล์หรือไม่
     if (req.file) {
-      slipUrl = await uploadToImgBB(req.file.path); // อัปโหลดไป ImgBB
+      slipUrl = req.file.path; // เก็บ path ของไฟล์ในโฟลเดอร์ uploads
+      // ตรวจสอบประเภทไฟล์ที่อัปโหลด (เช่น JPG, PNG, JPEG)
+      const allowedTypes = ['image/jpeg', 'image/png', 'image/jpg', 'image/webp'];
+      if (!allowedTypes.includes(req.file.mimetype)) {
+        return res.status(400).json({ error: "ประเภทไฟล์ไม่ถูกต้อง กรุณาอัปโหลดไฟล์รูปภาพเท่านั้น" });
+      }
     }
-
+          // ตรวจสอบสลิปการชำระเงินด้วย checkSlipWithSlipOK
+          const slipCheckResult = await checkSlipWithSlipOK(slipUrl);
+          if (!slipCheckResult.success) {
+            return res.status(400).json({ error: slipCheckResult.message });
+          }
+           // ตรวจสอบยอดเงินในสลิปว่าตรงกับยอดเงินที่ผู้ใช้กรอกหรือไม่
+          const slipAmount = slipCheckResult.data.amount; // ยอดเงินจากสลิปที่ตรวจสอบได้
+          if (parseFloat(totalCost) !== slipAmount) {
+            return res.status(400).json({
+              error: `ยอดเงินในสลิปไม่ตรง`,
+            });
+          }
+        
+    // หากมีการอัปโหลด slip ให้ทำการตรวจสอบยอดเงิน
     const booking = await prisma.booking.create({
       data: {
         startTime: moment.tz(startTime, "Asia/Bangkok").toDate(),
@@ -194,6 +229,7 @@ exports.createBooking = async (req, res) => {
     res.status(500).json({ error: error.message });
   }
 };
+
 
 // อัปเดตข้อมูลการจอง
 exports.updateBooking = async (req, res) => {
