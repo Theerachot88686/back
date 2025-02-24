@@ -3,6 +3,17 @@ const prisma = new PrismaClient();
 const axios = require("axios");
 
 
+async function checkDBConnection() {
+  try {
+    await prisma.$connect();
+    console.log("✅ Connected to database successfully!");
+  } catch (error) {
+    console.error("❌ Database connection error:", error);
+  }
+}
+
+checkDBConnection();
+
 const uploadToImgBB = async (fileBuffer) => {
   const formData = new FormData();
   formData.append("image", fileBuffer.toString("base64")); // แปลงไฟล์เป็น Base64
@@ -48,7 +59,7 @@ exports.getCompetitionById = async (req, res, next) => {
   const { id } = req.params;
   try {
     const competition = await prisma.competition.findUnique({
-      where: { id },
+      where: { id: parseInt(id, 10) }, // ✅ แปลง id เป็น Number
     });
     if (!competition) {
       return res.status(404).json({ error: "Competition not found" });
@@ -91,17 +102,10 @@ exports.updateCompetition = async (req, res, next) => {
 
   try {
     const updatedCompetition = await prisma.competition.update({
-      where: { id },
+      where: { id: parseInt(id, 10) }, // ✅ แปลง id เป็น Number
       data: { 
-        title, 
-        dec1, 
-        dec2, 
-        dec3, 
-        dec4, 
-        dec5, 
-        dec6, 
-        link,
-        image: imageUrl ? imageUrl : undefined, // ถ้าอัปโหลดสำเร็จใช้ URL ใหม่
+        title, dec1, dec2, dec3, dec4, dec5, dec6, link,
+        image: imageUrl ? imageUrl : undefined,
       },
     });
 
@@ -117,7 +121,7 @@ exports.deleteCompetition = async (req, res, next) => {
 
   try {
     await prisma.competition.delete({
-      where: { id },
+      where: { id: parseInt(id, 10) }, // ✅ แปลง id เป็น Number
     });
 
     res.status(200).json({ message: "Competition deleted successfully" });
