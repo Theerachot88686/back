@@ -9,15 +9,8 @@ const path = require('path');
 //const storage = multer.memoryStorage();
 //const upload = multer({ storage: storage });
 
-const storage = multer.diskStorage({
-    destination: function (req, file, cb) {
-      cb(null, 'uploads/'); // เก็บไฟล์ในโฟลเดอร์ uploads
-    },
-    filename: function (req, file, cb) {
-      cb(null, Date.now() + path.extname(file.originalname)); // สร้างชื่อไฟล์ที่ไม่ซ้ำ
-    }
-  });
-  const upload = multer({ storage: storage });
+const storage = multer.memoryStorage(); // ใช้ memoryStorage แทน diskStorage เพื่อไม่ต้องเก็บไฟล์ในเครื่อง
+const upload = multer({ storage: storage });
 
 // เส้นทางต่าง ๆ
 router.get('/', bookingController.getAllBooking);
