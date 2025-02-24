@@ -1,3 +1,5 @@
+require('dotenv').config(); // ✅ โหลด .env ก่อน PrismaClient
+
 const {PrismaClient} =require('@prisma/client')
 const prisma = new PrismaClient()
 
