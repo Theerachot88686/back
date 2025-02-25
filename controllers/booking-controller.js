@@ -23,7 +23,7 @@ const sendEmail = async (recipient, subject, htmlContent) => {
   });
 
   const mailOptions = {
-    from: "your_email@gmail.com", // อีเมลผู้ส่ง
+    from: "taikung3133@gmail.com", // อีเมลผู้ส่ง
     to: recipient, // อีเมลผู้รับ
     subject: subject, // หัวข้อของอีเมล
     html: htmlContent, // เนื้อหาของอีเมลในรูปแบบ HTML
@@ -206,7 +206,7 @@ exports.createBooking = async (req, res) => {
   `; // โค้ดอีเมล
 
     await sendEmail(
-      "admin@example.com",
+      "taikung3133@gmail.com",
       "การจองใหม่จากผู้ใช้",
       adminEmailContent
     );
@@ -398,7 +398,7 @@ exports.cancelBooking = async (req, res) => {
       <h3>การจองถูกยกเลิก</h3>
       <p>การจองของผู้ใช้ ${updatedBooking.user.username} สำหรับสนาม ${updatedBooking.field.name} ถูกยกเลิก</p>
     `;
-    await sendEmail("ใส่เมลแอดมิน", "การจองถูกยกเลิก", adminEmailContent); //ใส่เมลแอดมิน
+    await sendEmail("taikung3133@gmail.com", "การจองถูกยกเลิก", adminEmailContent); //ใส่เมลแอดมิน
 
     res.json(updatedBooking);
   } catch (error) {
