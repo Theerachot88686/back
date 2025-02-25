@@ -1,6 +1,6 @@
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")
+  url      = env("DATABASE_URL")  // ✅ ควรเป็นแบบนี้
 }
 
 generator client {
@@ -12,24 +12,34 @@ model Payment {
   bookingId     Int       @unique
   paymentStatus Statuspay @default(Pending)
   paymentDate   DateTime?
-  slip          String?
+  slip          String?   // Field สำหรับเก็บ path ของรูปสลิปที่อัปโหลด
+  Booking       Booking   @relation("BookingPayment", fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
 
 model User {
-  id               Int       @id @default(autoincrement())
-  username         String    @unique @db.VarChar(30)
-  password         String    @db.VarChar(72)
-  resetToken       String?
+  id          Int       @id @default(autoincrement())
+  username    String    @unique @db.VarChar(30)
+  password    String    @db.VarChar(72)
+  resetToken  String?
   resetTokenExpiry DateTime?
-  email            String    @unique
-  lastLoginAt      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
-  role             String    @default("user")
+  email       String   @unique
+  lastLoginAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  bookings    Booking[]
+  role        String    @default("user")
 
   @@map("users")
+}
+
+model Field {
+  id           Int       @id @default(autoincrement())
+  name         String
+  location     String
+  pricePerHour Float
+  bookings     Booking[]
 }
 
 model Booking {
@@ -41,42 +51,13 @@ model Booking {
   status    Status   @default(Pending)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
   userId    Int
+  field     Field    @relation(fields: [fieldId], references: [id])
   fieldId   Int
+  Payment   Payment? @relation("BookingPayment")
 
-  @@index([fieldId], map: "bookings_fieldId_fkey")
-  @@index([userId], map: "bookings_userId_fkey")
   @@map("bookings")
-}
-
-model Competition {
-  id    String  @id @default(cuid())
-  title String
-  dec1  String
-  dec2  String
-  dec3  String
-  dec4  String
-  dec5  String
-  dec6  String
-  link  String
-  image String?
-
-  @@map("competitions")
-}
-
-model Carousel {
-  id        String   @id @default(cuid())
-  image     String
-  createdAt DateTime @default(now())
-
-  @@map("carousels")
-}
-
-model field {
-  id           Int    @id @default(autoincrement())
-  name         String
-  location     String
-  pricePerHour Float
 }
 
 enum Status {
