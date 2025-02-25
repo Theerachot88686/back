@@ -5,7 +5,7 @@ const db = new PrismaClient();
 const { Parser } = require("json2csv");
 const nodemailer = require("nodemailer");
 const moment = require("moment-timezone");
-const { uploadToImgBB } = require("./imgbbUploader");
+const { uploadToImgBB } = require("./apiimgbb");
 const multer = require("multer");
 const { checkSlipWithSlipOK } = require('./slipokService');  // ใส่ path ให้ตรงกับที่อยู่ของไฟล์ที่มีฟังก์ชัน checkSlipWithSlipOK
 const Tesseract = require("tesseract.js");
@@ -148,7 +148,31 @@ exports.createBooking = async (req, res) => {
     });
 
     // ส่งอีเมลยืนยันการจอง
-    const customerEmailContent = `...`; // โค้ดอีเมล
+    const customerEmailContent = `
+    <h2 style="color: #2c3e50;">🎉 การจองของคุณเสร็จสมบูรณ์แล้ว!</h2>
+    <p>สวัสดีคุณ <strong>${booking.user.username}</strong>,</p>
+    <p>เราขอขอบคุณที่ใช้บริการของเรา! การจองของคุณได้รับการยืนยันเรียบร้อยแล้ว 🎯</p>
+    <p><strong>รายละเอียดการจอง:</strong></p>
+    <ul>
+      <li>🏟 <strong>สนาม:</strong> ${booking.field.name}</li>
+      <li>📅 <strong>วันที่:</strong> ${moment(booking.dueDate)
+        .tz("Asia/Bangkok")
+        .format("DD/MM/YYYY")}</li>
+      <li>⏰ <strong>เวลา:</strong> ${moment(booking.startTime)
+        .tz("Asia/Bangkok")
+        .format("HH:mm")} - ${moment(booking.endTime)
+      .tz("Asia/Bangkok")
+      .format("HH:mm")}</li>
+      <li>💰 <strong>ค่าบริการทั้งหมด:</strong> ฿${booking.totalCost.toFixed(
+        2
+      )}</li>
+    </ul>
+    <p>⏳ โปรดมาถึงสนามก่อนเวลาเพื่อเช็กอิน และอย่าลืมนำหลักฐานการจองของคุณมาด้วย!</p>
+    <p>หากมีข้อสงสัยหรือต้องการเปลี่ยนแปลงการจอง กรุณาติดต่อเราทางอีเมลนี้</p>
+    <p>ขอบคุณที่ใช้บริการ 🙏</p>
+    <hr />
+    <p style="font-size: 12px; color: #7f8c8d;">📌 อีเมลนี้เป็นการแจ้งเตือนอัตโนมัติ กรุณาอย่าตอบกลับ</p>
+  `; // โค้ดอีเมล
 
     await sendEmail(
       booking.user.email,
@@ -157,7 +181,29 @@ exports.createBooking = async (req, res) => {
     );
 
     // ส่งอีเมลไปยังแอดมิน
-    const adminEmailContent = `...`; // โค้ดอีเมล
+    const adminEmailContent = `
+    <h2 style="color: #c0392b;">📢 มีการจองใหม่เข้ามา!</h2>
+    <p>🆕 <strong>ผู้ใช้:</strong> ${booking.user.username} ได้ทำการจองสนาม</p>
+    <p><strong>รายละเอียดการจอง:</strong></p>
+    <ul>
+      <li>🏟 <strong>สนาม:</strong> ${booking.field.name}</li>
+      <li>📅 <strong>วันที่:</strong> ${moment(booking.dueDate)
+        .tz("Asia/Bangkok")
+        .format("DD/MM/YYYY")}</li>
+      <li>⏰ <strong>เวลา:</strong> ${moment(booking.startTime)
+        .tz("Asia/Bangkok")
+        .format("HH:mm")} - ${moment(booking.endTime)
+      .tz("Asia/Bangkok")
+      .format("HH:mm")}</li>
+      <li>💰 <strong>ค่าบริการทั้งหมด:</strong> ฿${booking.totalCost.toFixed(
+        2
+      )}</li>
+    </ul>
+    <p>📌 โปรดตรวจสอบสถานะการชำระเงินและอัปเดตระบบหากจำเป็น</p>
+    <p>🔍 ดูข้อมูลเพิ่มเติมที่ระบบหลังบ้าน</p>
+    <hr />
+    <p style="font-size: 12px; color: #7f8c8d;">📌 อีเมลนี้เป็นการแจ้งเตือนอัตโนมัติ</p>
+  `; // โค้ดอีเมล
 
     await sendEmail(
       "admin@example.com",

@@ -1,6 +1,6 @@
 datasource db {
   provider = "mysql"
-  url      = env("DATABASE_URL")  // ✅ ควรเป็นแบบนี้
+  url      = env("DATABASE_URL")
 }
 
 generator client {
@@ -12,24 +12,24 @@ model Payment {
   bookingId     Int       @unique
   paymentStatus Statuspay @default(Pending)
   paymentDate   DateTime?
-  slip          String?   // Field สำหรับเก็บ path ของรูปสลิปที่อัปโหลด
+  slip          String? // Field สำหรับเก็บ path ของรูปสลิปที่อัปโหลด
   Booking       Booking   @relation("BookingPayment", fields: [bookingId], references: [id], onDelete: Cascade)
 
   @@map("payments")
 }
 
 model User {
-  id          Int       @id @default(autoincrement())
-  username    String    @unique @db.VarChar(30)
-  password    String    @db.VarChar(72)
-  resetToken  String?
+  id               Int       @id @default(autoincrement())
+  username         String    @unique @db.VarChar(30)
+  password         String    @db.VarChar(72)
+  resetToken       String?
   resetTokenExpiry DateTime?
-  email       String   @unique
-  lastLoginAt DateTime?
-  createdAt   DateTime  @default(now())
-  updatedAt   DateTime  @updatedAt
-  bookings    Booking[]
-  role        String    @default("user")
+  email            String    @unique
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  bookings         Booking[]
+  role             String    @default("user")
 
   @@map("users")
 }
@@ -59,6 +59,30 @@ model Booking {
 
   @@map("bookings")
 }
+
+model Competition {
+  id    String  @id @default(cuid()) // เปลี่ยนเป็น String โดยใช้ cuid() สำหรับ ID
+  title String // เก็บเป็น String
+  dec1  String
+  dec2  String // เก็บเป็น String
+  dec3  String // เก็บเป็น String
+  dec4  String // เก็บเป็น String
+  dec5  String
+  dec6  String
+  link  String
+  image String?
+
+  @@map("competitions") // กำหนดชื่อตารางในฐานข้อมูล
+}
+
+model Carousel {
+  id        String   @id @default(cuid())  // ใช้ cuid() สำหรับ ID ที่ไม่ซ้ำ
+  image     String   // เก็บเส้นทางของภาพ
+  createdAt DateTime @default(now()) // เก็บเวลาที่สร้างข้อมูล
+
+  @@map("carousels") // กำหนดชื่อของตารางในฐานข้อมูล
+}
+
 
 enum Status {
   Pending
